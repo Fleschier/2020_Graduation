@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+ <title>WiFi安全检测系统</title>
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <link rel="stylesheet" type="text/css" href="{{static_url('css/bootstrap.min.css')}}">
+    <link rel="stylesheet" type="text/css" href="{{static_url('css/scan.css')}}">
+    <link rel="stylesheet" type="text/css" href="{{static_url('css/main.css')}}">
+  </head>
+
+  <body class="main-body">
+    <header class="navbar navbar-default navbar-fixed-top bs-docs-nav" role="banner">
+      <div class="container">
+        <div class="navbar-header">
+          <h3><strong>WiFi安全检测系统</strong><h3>
+        </div>
+      </div>
+    </header>
+
+    <!-- 扫描wifi -->
+    <div style="text-align:center; padding-bottom: 30px;">
+      <a class="btn btn-lg btn-primary" href="/search" role="button">
+        扫描WiFi
+      </a>
+    </div>
+    
+
+    <!-- 列出所有WiFi -->
+    {% for wifi in wifis.items() %}
+    <div class="jumbotron" style="width:60%; padding-left: 20px; border-radius: 20px;margin-left: auto; margin-right: auto;">
+      <h2 class="display-4"><strong>WiFi ssid:&nbsp; {{ wifi[0] }}</strong></h2>
+      {% if wifi[0] != "NO SIGNAL" %}
+      <p>信号强度：&nbsp; {{wifi[1]["signal"]}}</p>
+      <p>安全状态：&nbsp; 未检测</p>
+      <hr class="my-4">
+      <!-- 连接WiFi按钮 已解决数据传输的重要问题 -->
+      <form class="form-inline my-2 my-lg-0" style="padding-bottom:30px;padding-right: 1em; display: inline;" action="/logout" method="post">
+        <button type="button" class="btn btn-lg btn-primary" data-toggle="modal" data-target="#WIFICONNNECT" value="{{wifi[0]}}" 
+        onclick="$(document).ready(function(){
+          document.getElementById('wifiname_front').innerHTML='{{wifi[0]}}';
+          document.getElementById('wifiname').value='{{wifi[0]}}';
+          })">
+          连接
+        </button>
+      </form>
+      <!-- <a class="btn btn-lg btn-primary" href="/check?wifiname={{wifi[0]}}" role="button">进行安全检测</a> -->
+      <button type="button" class="secure_check_button btn btn-lg btn-primary" data-toggle="modal" data-target="#WIFISECURE" value="{{wifi[0]}}" 
+        onclick="$(document).ready(function(){
+          document.getElementById('current_wifi').innerHTML='{{wifi[0]}}';
+          })">
+          开始安全检测
+        </button>
+      {% end %}
+    </div>
+    {% end %}
+
+    <!-- 连接WIFi dialog界面 -->
+    <div id="WIFICONNNECT" class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">连接WiFi</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <div class="modal-body"> 
+            <h3 id="wifiname_front">WiFi名称</h3>
+            <form id="connnectForm" action="/connect" method="post">
+              <div class="form-group">
+                <label >输入WiFi密码：</label>
+                <input type="password" class="form-control" id="wifikey"  name="wifikey" placeholder="Enter wifi key">
+                <input type="text" style="visibility: hidden;" id="wifiname" name="wifiname" value="none">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button id="connect_button" type="button" class="btn btn-primary" data-dismiss="modal">Connect</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <!-- <button id="connect_button" type="button" class="btn btn-primary" onclick="document.getElementById('connnectForm').submit();">Connect</button> -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WiFi安全检测dialog界面 -->
+    <div id="WIFISECURE" class="modal fade bd-example-modal-lg" tabindex="-1" role="dialog" aria-labelledby="myLargeModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg" style="width: 80%;">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+
+          <div class="modal-body"> 
+            <h3 id="current_wifi">WiFi名称</h3>
+            <hr>
+
+            <div style="margin-left: 10%;">
+              <button id="checkall_button" class="btn btn-success" style="margin-left: 5%;">一键检测</button>
+              <button id="basecheck_button" class="btn btn-primary" style="margin-left: 5%;">基本信息检测</button>
+              <button id="keycheck_button" class="btn btn-primary" style="margin-left: 5%;">弱密码检测(耗时较长)</button>
+              <button id="midman_button" class="btn btn-primary" style="margin-left: 5%;">虚假wifi检测</button>
+            </div>
+            
+            <div class="container">
+              <div class="row">
+                <div class="col-lg-9" style="width: 100%;">
+                  <div id="chatlog"style="display:block;">
+                    <div id="chatbox" class="chatbox"></div>
+                  </div>
+                </div><!-- end mainpage -->
+              </div><!-- end row -->
+            </div><!-- /.container -->
+
+          </div>
+
+          <div class="modal-footer">
+            <button id="save_button" type="button" class="btn btn-primary">保存报告到本地</button>
+            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <!-- <button id="connect_button" type="button" class="btn btn-primary" onclick="document.getElementById('connnectForm').submit();">Connect</button> -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </body>
+
+  <footer>
+     <!-- jquery的引入必须放在所有脚本引入之前 -->
+     <script src="../static/js/jquery-2.2.3.min.js"></script>
+     <script src="{{static_url('js/bootstrap.min.js')}}"></script>
+     <script src="../static/js/main.js"></script>
+  </footer>
+</html>
