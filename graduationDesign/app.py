@@ -6,7 +6,7 @@ import tornado.websocket
 import json
 import time
 
-sys.path.append("./")
+sys.path.append("./")   # 解决import同目录文件错误的问题
 import graduationDesign.wifi as wifi
 
 from tornado.options import define, options
@@ -30,11 +30,15 @@ def getProfile(wifiname):
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
-        self.render("index.html", wifis=wifis)
+        self.render("index.html")
+
+class serverHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.render("server.html")
 
 class wifiHandler(tornado.web.RequestHandler):
     def get(self):
-        self.render("index.html", wifis=wifis)
+        self.render("wifi.html", wifis=wifis)
 
 # 扫描并显示附近的可用WiFi
 class searchWifiHandler(tornado.web.RequestHandler):
@@ -58,11 +62,11 @@ class searchWifiHandler(tornado.web.RequestHandler):
                 "key":item.key,
                 "signal": res,   # 信号强度
             }
-        self.redirect("/")
+        self.redirect("/wifi")
 
 class connectWifiHandler(tornado.web.RequestHandler):
     def get(self):
-        self.redirect("/")
+        self.redirect("/wifi")
     
     def post(self):
         key = self.get_argument("wifikey")
@@ -88,6 +92,7 @@ class compreInspectionHandler(tornado.websocket.WebSocketHandler):
     # 静态成员变量用于解决和预防并发执行的错误
     currentWifi = ''    # 存储安全检测时的wifi名称
     currentProfile = ''    # 安全检测时的wifi配置文件
+    # 设置响应锁
     basecheck_flg = False
     midmancheck_flg = False
     keycheck_flg = False
@@ -95,12 +100,9 @@ class compreInspectionHandler(tornado.websocket.WebSocketHandler):
 
     def open(self):     # 连接建立
         print("websocket connected")
-        # self.write_message(json.dumps({
-        #     'message': '正在开始检测...'
-        # }))
-        # self.write_message(json.dumps({
-        #     'message': 'Now please wait the secure check to begin...',
-        # }))
+        self.write_message(json.dumps({
+            'message': '连接已建立...'
+        }))
 
     def on_message(self, message):
         msg = json.loads(message) # 加载信息
@@ -154,7 +156,7 @@ class compreInspectionHandler(tornado.websocket.WebSocketHandler):
             midManCheck(compreInspectionHandler.currentWifi, compreInspectionHandler.currentProfile, self)
             compreInspectionHandler.midmancheck_flg = False
 
-        # 每进行一次检测就关闭websocket
+        # 每进行一次检测就关闭本次建立的websocket
         self.close()
 
     def on_close(self):
@@ -228,6 +230,8 @@ settings = {
 
 url = [
     (r'/', MainHandler),
+    (r'/wifi', wifiHandler),
+    (r'/server', serverHandler),
     (r'/search', searchWifiHandler),
     (r'/connect', connectWifiHandler),
     (r'/secure_check', compreInspectionHandler),

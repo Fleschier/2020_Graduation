@@ -25,29 +25,3 @@
     display: inline;
     text-align: center;
 }
-.index_div{
-    /* margin-left: auto;
-    margin-right: auto; */
-    /* 使div居中可以这样缩写 */
-    margin: 0 auto;
-    width: 70%;
-    /* 使按钮，标题等等居中均这样写 */
-    text-align:center;  
-    padding-top: 50px;
-}
-.show_inline{
-    display: inline;
-}
-.show_in_center{
-    text-align: center;
-}
-.brand_title{
-    font-size: 1.5em;
-    padding-left: 2em;
-}
-.title{
-    font-size: 4em;
-}
-.index_button{
-    font-size: 2.5em;
-}
