@@ -2,6 +2,7 @@ import pywifi
 import sys
 import time
 from pywifi import const
+import os
 
 # wifi = pywifi.PyWiFi()
 # print(wifi.interfaces()[0])
@@ -38,7 +39,7 @@ cipher_types = [
     "const.CIPHER_TYPE_CCMP"
 ]
 
-# 扫描wifi并输出
+# 扫描wifi获取profiles列表
 def bies():
     wifi=pywifi.PyWiFi()#创建一个无限对象
     ifaces=wifi.interfaces()[0]#取一个无限网卡，一般只有一个，故取0
