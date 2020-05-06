@@ -5,9 +5,11 @@ import tornado.web
 import tornado.websocket
 import json
 import time
+import re
 
 sys.path.append("./")   # 解决import同目录文件错误的问题
 import graduationDesign.wifi as wifi
+import graduationDesign.DDosCheck as DDosCheck
 
 from tornado.options import define, options
 
@@ -96,7 +98,6 @@ class compreInspectionHandler(tornado.websocket.WebSocketHandler):
     basecheck_flg = False
     midmancheck_flg = False
     keycheck_flg = False
-
 
     def open(self):     # 连接建立
         print("websocket connected")
@@ -190,7 +191,7 @@ def keyCheck(currentWifi, currentProfile, self):
     f = open(r'D:\Crs chen\2020_Graduation\graduationDesign\weakpasswd_part.txt', 'r')
     passwds = f.readlines()
     self.write_message(json.dumps({
-        'message' : '即将进行密码强度测试，可能会耗费一段时间，请耐心等待...'
+        'message' : '即将进行字典暴力破解密码测试，可能会耗费一段时间，请耐心等待...'
     }))
     secureFlg = True
     for passwd in passwds:
@@ -216,6 +217,96 @@ def midManCheck(currentWifi, currentProfile, self):
     self.write_message(json.dumps({'message' : '功能开发中，敬请期待！'}))
     pass
 
+class listeningHandler(tornado.websocket.WebSocketHandler):
+    ddos = DDosCheck.DDosCheck()
+    interval = 2    # 设置刷新间隔
+    startListening = False   #是否监听
+
+    def open(self):
+        pass
+    
+    def on_message(self, message):
+        msg = json.loads(message) # 加载信息
+        if(msg['type'] == 'start'): 
+            listeningHandler.startListening = True
+            print('start')
+        if(msg['type'] == 'stop'): #已解决## 目前进度。多线程有问题，无法停止。因为一个on_message方法没有结束，就不能收到另一个信息
+            listeningHandler.startListening = False
+            print('stop')
+        
+        if(listeningHandler.startListening):
+            # 刷新间隔
+            time.sleep(listeningHandler.interval)
+            # 每次更新消息之前先清除之前已显示的消息
+            self.write_message(json.dumps({
+                'type' : "clear",
+                #'message' :"none"
+            }))
+
+            listeningHandler.ddos.clearInfo() # 更新信息前刷新缓存 
+            
+            # 更新IP连接信息           
+            listeningHandler.ddos.connectCheck()  # 更新
+            Info = listeningHandler.ddos.CURRENT_INFO
+            blockIP = listeningHandler.ddos.BlOCKING_IP
+            # 处理连接信息
+            for item in Info:
+                # DDosCheck.CURRENT_INFO[item]
+                local_ports = list(listeningHandler.ddos.CURRENT_INFO[item]["local_port"])
+                local_ports.sort()
+                tmp_str = ''
+                for i in local_ports:
+                    i = str(i)
+                    tmp_str += (i + '&&')
+                    if(len(tmp_str) >= 10): # 防止过长
+                        tmp_str += '&&...'
+                        break
+                info_message = "{:&<30}{:&^40d}{:&>40}".format(
+                    item, 
+                    listeningHandler.ddos.CURRENT_INFO[item]["counts"],
+                    tmp_str
+                    )
+                info_message = re.sub('&','&nbsp;',info_message)    # 以浏览器识别的空格字符重新填充
+                self.write_message(json.dumps({
+                    'type' : "currentInfo",
+                    #'message' :item +5*"&nbsp;" + str(listeningHandler.ddos.CURRENT_INFO[item]["counts"]),
+                    'message': info_message
+                }))
+            # 处理被封锁的IP
+            for item in blockIP:
+                self.write_message(json.dumps({
+                    'type' : "blockIP",
+                    'message' :item
+                }))
+
+            # 更新流量信息
+            listeningHandler.ddos.flowCheck()
+            total_flow = listeningHandler.ddos.TOTOAL_FLOW
+            current_flow = listeningHandler.ddos.CURRENT_FLOW
+            # 处理流量信息
+            self.write_message(json.dumps({
+                'type' : "total_flow",
+                'message' :total_flow
+            }))
+            self.write_message(json.dumps({
+                'type' : "current_flow",
+                'message' :current_flow
+            }))
+
+
+            # 发送是否继续更新请求
+            self.write_message(json.dumps({
+                'type' : "continue",
+                #'message' :"whether continue?"
+            }))
+            
+        else:
+            self.close() # 关闭websocket
+
+    def on_close(self):
+        print("websocket stoped")
+
+
 import uuid
 import base64
 secret_code = base64.b64encode(uuid.uuid4().bytes)  #使用加密的cookie
@@ -235,6 +326,7 @@ url = [
     (r'/search', searchWifiHandler),
     (r'/connect', connectWifiHandler),
     (r'/secure_check', compreInspectionHandler),
+    (r'/listen', listeningHandler),
 ]
 
 define("port", default = 8888, help = "run on the given port", type=int)

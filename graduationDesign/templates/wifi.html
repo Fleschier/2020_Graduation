@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
- <title>WiFi安全检测系统</title>
+ <title>WiFi与服务器安全检测系统</title>
 
   <head>
     <meta charset="utf-8">
@@ -12,22 +12,26 @@
 
   <body class="main-body">
     <header class="navbar navbar-default navbar-fixed-top bs-docs-nav" role="banner">
-      <div class="container">
-        <div class="navbar-header show_inline">
-          <a href="/" class="navbar-brand brand_title">首页</a>
+      <div class="container">      
+        <div class="col-lg-3">
+          <div class="navbar-header ">
+            <a class="navbar-brand brand_title">WiFi安全检测</a>
+          </div>
         </div>
-        <div class="navbar-header show_inline">
-          <a class="navbar-brand brand_title">WiFi安全检测</a>
+
+        <div class="col-lg-3">
+          <a class="btn btn-lg btn-primary" href="/search" role="button" style="margin-top:10px;margin-bottom: 10px;">
+            扫描附近WiFi
+          </a>
+        </div>
+
+        <div class="col-lg-2 col-lg-offset-4">
+          <div class="navbar-header">
+            <a href="/" class="navbar-brand brand_title">返回首页</a>
+          </div> 
         </div>
       </div>
     </header>
-
-    <!-- 扫描wifi -->
-    <div style="text-align:center; padding-bottom: 30px;">
-      <a class="btn btn-lg btn-primary" href="/search" role="button">
-        扫描WiFi
-      </a>
-    </div>
     
 
     <!-- 列出所有WiFi -->
@@ -101,7 +105,7 @@
 
           <div class="modal-body"> 
             <h3 id="current_wifi">WiFi名称</h3>
-            <hr>
+           
 
             <div style="margin-left: 10%;">
               <button id="checkall_button" class="btn btn-info" style="margin-left: 5%;">一键检测</button>
@@ -109,6 +113,8 @@
               <button id="keycheck_button" class="btn btn-danger" style="margin-left: 5%;">尝试暴力破解(耗时较长)</button>
               <button id="midman_button" class="btn btn-warning" style="margin-left: 5%;">虚假wifi检测</button>
             </div>
+            
+            <hr>
             
             <div class="container">
               <div class="row">

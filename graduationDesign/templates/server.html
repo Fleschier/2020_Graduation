@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html>
- <title>WiFi安全检测系统</title>
+ <title>WiFi与服务器安全检测系统</title>
 
   <head>
     <meta charset="utf-8">
@@ -8,26 +8,81 @@
     <link rel="stylesheet" type="text/css" href="{{static_url('css/bootstrap.min.css')}}">
     <link rel="stylesheet" type="text/css" href="{{static_url('css/scan.css')}}">
     <link rel="stylesheet" type="text/css" href="{{static_url('css/main.css')}}">
+    <link rel="stylesheet" type="text/css" href="{{static_url('css/Chart.min.css')}}">
   </head>
 
   <body class="main-body">
     <header class="navbar navbar-default navbar-fixed-top bs-docs-nav" role="banner">
-      <div class="container show_in_center">
-        <div class="navbar-header show_inline">
-          <a href="/" class="navbar-brand brand_title">首页</a>
+      <div class="container">
+        
+        <div class="col-lg-3">
+          <div class="navbar-header ">
+            <a class="navbar-brand brand_title">服务器安全监测</a>
+          </div>
         </div>
-        <div class="navbar-header show_inline">
-          <a class="navbar-brand brand_title">服务器安全检测</a>
+
+        <div class="col-lg-4">
+          <button id="startListening_button" class="btn btn-info btn-lg" style="margin-top:10px;margin-bottom: 10px;visibility: visible;">
+            开始监听
+          </button>
+          <button id="stopListening_button" class="btn btn-danger btn-lg" style="margin-top:10px;margin-bottom: 10px; visibility: hidden;">
+            停止监听
+          </button>
+          <button id="background_button" class="btn btn-warning btn-lg" style="margin-top:10px;margin-bottom: 10px; visibility: hidden;">
+            后台运行
+          </button>
+        </div>
+
+        <div class="col-lg-2 col-lg-offset-3">
+          <div class="navbar-header">
+            <a href="/" class="navbar-brand brand_title">返回首页</a>
+          </div> 
         </div>
       </div>
     </header>
+
+    <div class="container-fluid">
+      <div class="row">
+        <div class="col-lg-1 server_div">
+          <h3 style="padding-left: 10px;">检测到威胁的IP(已自动处理)</h3><hr>
+          <span id="blockIP">
+            <!-- None -->
+          </span>
+        </div>
+        <div class="col-lg-5 col-lg-offset-1 server_div">
+          <h3>目前连接状态(刷新间隔<span id="refresh_interval">3</span>s)</h3><hr>
+          <div style="display: inline;">IP</div>
+          <div style="display: inline;padding-left: 35%;">连接请求数</div>
+          <div style="display: inline;padding-left: 25%;">端口</div>
+          <div style="overflow: scroll; min-height: 70%; max-height: 80%;">
+            <span id="currentInfo" >
+              <!-- None -->
+            </span>
+          </div>
+        </div>
+        <div class="col-lg-4 col-lg-offset-1 server_div">
+          <h3>实时流量(接收数据量)</h3><hr>
+          <span id="flow">
+            TCP接收流量总计：&nbsp;<span id="total_count"></span>&nbsp;KB
+          </span>
+          <div>
+            <!-- chart折线图 -->
+            <canvas id="myChart" style="width: 90%;height: 400px;"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </body>
 
   <footer>
      <!-- jquery的引入必须放在所有脚本引入之前 -->
      <script src="../static/js/jquery-2.2.3.min.js"></script>
+     <script src="../static/js/Chart.min.js"></script>
      <script src="{{static_url('js/bootstrap.min.js')}}"></script>
-     <script src="../static/js/main.js"></script>
+     <!-- chart.js在线获取 -->
+     <!-- <script src="https://cdnjs.com/libraries/chart.js"></script> -->
+     <script src="../static/js/server.js"></script>
+     
   </footer>
 </html>
