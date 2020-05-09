@@ -1,15 +1,13 @@
-# import os
-# print(os.path.join(os.getcwd(), 'weakpasswd_part.txt'))
+from scapy.all import *  
+import chardet
 
-# f = open(r'D:\Crs chen\2020_Graduation\graduationDesign\pwd.txt', 'r')
-# for line in f.readlines():
-#     print(line)
-# f.close()
-# from subprocess import Popen, PIPE
-# import chardet
-# pipe = Popen("netstat -vn", shell=True, bufsize=1024, stdout=PIPE).stdout
-# info = pipe.read()  # 获取bytes串
-# ret = chardet.detect(info)
-# print(ret)
+def telnet_monitor(pkt):  
+    # pkt.show()
+    
+    print("psrc: ",pkt['ARP'].psrc)
 
-print("{:&>20d}".format(20))
+PTKS = sniff(prn = telnet_monitor,filter = "arp",store=1,timeout=15) 
+# PTKS = sniff(prn = telnet_monitor,filter = "tcp",store=1,timeout=15) 
+
+# print(PTKS.res) # 由packet组成的list
+# print(PTKS.summary()) # 等价于PTKS.show()

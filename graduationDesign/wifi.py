@@ -4,9 +4,10 @@ import time
 from pywifi import const
 import os
 
-# wifi = pywifi.PyWiFi()
-# print(wifi.interfaces()[0])
-# print()
+from scapy.all import *
+from scapy.sendrecv import sendp
+from scapy.layers.dot11 import Dot11, Dot11Deauth, RadioTap, Dot11Beacon, Dot11Elt, Dot11ProbeResp
+import logging
 
 # 所有状态 
 ifaces_status = [
@@ -94,9 +95,75 @@ def tryConnect(profl, passwd):
     else:
         return False
 
+class FakeWifiCheck():
+    def __init__(self):
+        self.info_list = []
+        self.blacklist = []
+        self.pp = {}
+        self.channel = ''
+
+    def sniff_channel_hop(self):
+        # for i in range(1, 14):
+            # os.system("iwconfig " + self.iface + " channel " + str(i))
+        sniff(count=4, prn=self.air_scan)   # prn：为每个数据包定义一个回调函数
+
+
+    def air_scan(self, pkt):
+        """
+        Scan all network with channel hopping
+        Collected all ssid and mac address information
+        :param pkt:  result of sniff function
+        """
+        print("air_scan is running!")
+        pkt.show()
+        if pkt.haslayer(Dot11ProbeResp):    # 判断是否是 802.11 Probe Response 类型的
+            ssid, bssid = pkt.info, pkt.addr2
+            info = "{}=*={}".format(bssid, ssid)
+
+            print("info: ", info)
+
+            if info not in self.info_list:
+                self.info_list.append(info)
+
+
+    def pp_analysis(self):
+        """
+        Analysis air_scan result for pineAP Suite detection
+        """
+        for i in self.info_list:
+
+            bssid, ssid= i.split("=*=")
+            if (bssid not in self.pp.keys()): # 如果bssid未记录
+                self.pp[bssid] = {ssid,}
+                # self.pp[bssid].add(ssid)
+            elif (bssid in pp.keys() and ssid not in self.pp[bssid]): # 如果已经存在该bssid记录
+                self.pp[bssid].add(ssid)
+
+        """
+        Detects KARMA Attack.
+        """
+        for v in self.pp.keys():
+            if (len(self.pp[v]) >= 2 and v not in self.blacklist):  # 
+                print ("KARMA Attack activity detected.", 'magenta')
+                print (" MAC Address : ", v)
+                print (" FakeAP count: ", len(self.pp[v]))
+ 
+                self.blacklist.append(v)
+        time.sleep(3)
+
+
+    # def find_channel(self, clist, v):
+    #     for i in range(0, len(clist)):
+    #         if clist[i].haslayer(Dot11ProbeResp) and clist[i].addr2 == v:
+    #             self.channel = ord(clist[i][Dot11Elt:3].info)
+
+
 
 def main():
-    bies()
+    # bies()
+    fakecheck = FakeWifiCheck()
+    fakecheck.sniff_channel_hop()
+    fakecheck.pp_analysis()
 
 if __name__ == '__main__':
     main()

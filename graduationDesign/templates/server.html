@@ -21,7 +21,7 @@
           </div>
         </div>
 
-        <div class="col-lg-4">
+        <div class="col-lg-7">
           <button id="startListening_button" class="btn btn-info btn-lg" style="margin-top:10px;margin-bottom: 10px;visibility: visible;">
             开始监听
           </button>
@@ -31,9 +31,15 @@
           <button id="background_button" class="btn btn-warning btn-lg" style="margin-top:10px;margin-bottom: 10px; visibility: hidden;">
             后台运行
           </button>
+          <button id="ARP_open_button" class="btn btn-info btn-lg" style="margin-top:10px;margin-bottom: 10px; visibility: hidden;">
+            开启ARP监听
+          </button>
+          <button id="ARP_close_button" class="btn btn-danger btn-lg" style="margin-top:10px;margin-bottom: 10px; visibility: hidden;">
+            关闭ARP监听
+          </button>
         </div>
 
-        <div class="col-lg-2 col-lg-offset-3">
+        <div class="col-lg-2">
           <div class="navbar-header">
             <a href="/" class="navbar-brand brand_title">返回首页</a>
           </div> 
@@ -50,7 +56,7 @@
           </span>
         </div>
         <div class="col-lg-5 col-lg-offset-1 server_div">
-          <h3>目前连接状态(刷新间隔<span id="refresh_interval">3</span>s)</h3><hr>
+          <h3>目前连接状态<span id="ARP_flg"></span></h3><hr>
           <div style="display: inline;">IP</div>
           <div style="display: inline;padding-left: 35%;">连接请求数</div>
           <div style="display: inline;padding-left: 25%;">端口</div>

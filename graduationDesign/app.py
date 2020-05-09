@@ -87,7 +87,6 @@ class connectWifiHandler(tornado.web.RequestHandler):
         if(flg): self.write("连接成功")
         else: self.write("连接失败")
 
-
 class compreInspectionHandler(tornado.websocket.WebSocketHandler):
 
     # 作为静态成员变量，访问时不用加self，正确的访问方式是ClassName.静态变量
@@ -152,9 +151,9 @@ class compreInspectionHandler(tornado.websocket.WebSocketHandler):
             keyCheck(compreInspectionHandler.currentWifi, compreInspectionHandler.currentProfile, self)
             compreInspectionHandler.keycheck_flg = False
 
-        # 进行wifi真实性检测，防止是中间人之类的伪造wifi
+        # 进行wifi真实性检测，防止是钓鱼wifi
         if(compreInspectionHandler.midmancheck_flg):
-            midManCheck(compreInspectionHandler.currentWifi, compreInspectionHandler.currentProfile, self)
+            fakeWifiCheck(compreInspectionHandler.currentWifi, compreInspectionHandler.currentProfile, self)
             compreInspectionHandler.midmancheck_flg = False
 
         # 每进行一次检测就关闭本次建立的websocket
@@ -210,7 +209,7 @@ def keyCheck(currentWifi, currentProfile, self):
     else:
         self.write_message(json.dumps({'message' : 'wifi存在安全隐患，密码强度过低！请及时更换密码'}))
 
-def midManCheck(currentWifi, currentProfile, self):
+def fakeWifiCheck(currentWifi, currentProfile, self):
     self.write_message(json.dumps({
         'message' : '进行WiFi真实性检测...'
     }))
@@ -230,13 +229,18 @@ class listeningHandler(tornado.websocket.WebSocketHandler):
         if(msg['type'] == 'start'): 
             listeningHandler.startListening = True
             print('start')
-        if(msg['type'] == 'stop'): #已解决## 目前进度。多线程有问题，无法停止。因为一个on_message方法没有结束，就不能收到另一个信息
+        if(msg['type'] == 'stop'):       #已解决## 目前进度。多线程有问题，无法停止。因为一个on_message方法没有结束，就不能收到另一个信息
             listeningHandler.startListening = False
             print('stop')
         
         if(listeningHandler.startListening):
+
             # 刷新间隔
             time.sleep(listeningHandler.interval)
+
+            # 更新黑名单信息
+            # listeningHandler.ddos.updateRules()
+
             # 每次更新消息之前先清除之前已显示的消息
             self.write_message(json.dumps({
                 'type' : "clear",
@@ -306,6 +310,23 @@ class listeningHandler(tornado.websocket.WebSocketHandler):
     def on_close(self):
         print("websocket stoped")
 
+# ARP辅助监测
+class ArpAssistHandler(tornado.web.RequestHandler):
+    ddos = DDosCheck.DDosCheck()
+
+    def get(self):
+        self.redirect("/server")
+
+    def post(self):
+        msg = self.get_argument("data")
+        time.sleep(1)
+        if(msg == "start"):
+            print("ARP start")
+            self.write("success start ARP")
+            ArpAssistHandler.ddos.ARPassistListening()  # ARP辅助监听
+            
+            
+
 
 import uuid
 import base64
@@ -327,6 +348,7 @@ url = [
     (r'/connect', connectWifiHandler),
     (r'/secure_check', compreInspectionHandler),
     (r'/listen', listeningHandler),
+    (r'/arp', ArpAssistHandler),
 ]
 
 define("port", default = 8888, help = "run on the given port", type=int)

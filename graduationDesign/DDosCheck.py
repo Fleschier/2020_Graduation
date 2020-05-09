@@ -1,10 +1,8 @@
 from subprocess import Popen, PIPE
 import re
 import time
+from scapy.all import *
 
-import dpkt
-import socket
-import optparse
 """
 
 显示协议统计信息和当前 TCP/IP 网络连接。
@@ -60,29 +58,32 @@ TIME-WAIT：等待足够的时间以确保远程TCP接收到连接中断请求�
 CLOSED：没有任何连接状态
 """
 """
-被DDoS攻击时的现象：
+以管理员身份运行cmd
 
-· 被攻击主机上有大量等待的TCP连接。
+例子：
+添加规则,禁止访问111.13.101.208
+netsh advfirewall firewall add rule name="Block URL" remoteip=111.13.101.208 dir=out enable=yes action=block
 
-· 网络中充斥着大量的无用的数据包，源地址为假。
+删除规则
+netsh advfirewall firewall delete rule name="Block URL" 
 
-· 制造高流量无用数据，造成网络拥塞，使受害主机无法正常和外界通讯。
-
-· 利用受害主机提供的服务或传输协议上的缺陷，反复高速的发出特定的服务请求，使受害主机无法及时处理所有正常请求。
-
-· 严重时会造成系统死机。"""
+查看规则
+netsh advfirewall firewall show rule name = "Block URL"
+"""
 
 import chardet
 
 class DDosCheck():
 
     def __init__(self):
+        self.IP_Mac_address = {"example_IP":{"mac1",}}    # 存储嗅探到的IP地址和对应的mac地址（mac地址可能不止一个，这样的IP说明伪造了IP地址，应当加入黑名单）
         self.CONCURRENCY_ALLOWED = 30   # 默认允许的最大连接数
-        self.OUTDATE_TIME = 86400
+        self.OUTDATE_TIME = 1000       # 屏蔽IP的时长
         self.CURRENT_INFO = {}   # 存储当前活动连接状态
         self.BlOCKING_IP = set() # 存储黑名单
         self.CURRENT_FLOW = {"Ipv4":0,"Ipv6":0}  # 当前流量速度，分段/秒
         self.TOTOAL_FLOW = 0     # 从开始监听时起累计接收的分段数
+        self.rules = {}     # 存储已被屏蔽的IP和对应的屏蔽规则名称
 
     def setMaxConcurrency(self, max):
         self.CONCURRENCY_ALLOWED = max
@@ -90,6 +91,24 @@ class DDosCheck():
     def clearInfo(self):
         self.CURRENT_INFO.clear()
         self.BlOCKING_IP.clear()
+
+    # 屏蔽指定IP
+    def blockTargetIP(self, targetIP, ruleName):
+        pipe = Popen('netsh advfirewall firewall add rule name="{}" remoteip={} dir=out enable=yes action=block'.format(ruleName,targetIP), shell=True, bufsize=1024, stdout=PIPE).stdout
+        # print(pipe.read())
+        self.rules[ruleName] = {"IP":targetIP,"timeout":0}  # 将黑名单记录下来
+
+    # 解除屏蔽
+    def unblockTargetIP(self, ruleName):
+        pipe = Popen('netsh advfirewall firewall delete rule name="{}"'.format(ruleName), shell=True, bufsize=1024, stdout=PIPE).stdout
+        self.rules.popitem(ruleName)
+
+    # 更新黑名单
+    def updateRules(self):
+        for item in self.rules:
+            item["timeout"] += 3   # 每3秒调用一次此方法，将黑名单中的时间都+3
+            if(item["timeout"] >= self.OUTDATE_TIME):   # 如果屏蔽时长够了，则将其移出黑名单
+                self.unblockTargetIP(item)
 
     # 检查建立连接的端口和IP
     def connectCheck(self):
@@ -109,12 +128,13 @@ class DDosCheck():
             #print(item)
             pattern = re.compile("\s+")     # 匹配多个空白字符
             item = pattern.split(item)
-            # print(item) # 格式：['', 'TCP', '127.0.0.1:7890', '127.0.0.1:52751', 'ESTABLISHED', '']
+            # print(item) # 格式样例：['', 'TCP', '127.0.0.1:7890', '127.0.0.1:52751', 'ESTABLISHED', '']
             outsideIP = item[3].split(":")[0]   # 去除端口号，仅保留IP
             localPort = item[2].split(":")[1]   # 保留端口号
             if(localPort == ''): continue   # 去除错误
 
-            if(outsideIP == "127.0.0.1 "): continue # 去除本机IP
+            if(outsideIP == "127.0.0.1"): continue # 去除本机IP
+            if(item[4] == "ESTABLISHED"): continue # 去除已经建立的连接
 
             if(outsideIP not in self.CURRENT_INFO):  # 以外部ip地址为字典键
                 self.CURRENT_INFO[outsideIP] = {
@@ -128,15 +148,19 @@ class DDosCheck():
                 self.CURRENT_INFO[outsideIP]["status"].add(item[4])
                 self.CURRENT_INFO[outsideIP]["counts"] += 1
 
-        #print(self.CURRENT_INFO)
+        # 下面进行黑名单IP的相关处理
+        #out = open("log.txt", 'w')  # 先建立文件，准备下面的将黑名单写入日志文件
         for i in self.CURRENT_INFO:
             # print(i, type(i))
             #print(self.CURRENT_INFO[i]["counts"])
             if(self.CURRENT_INFO[i]["counts"] >= self.CONCURRENCY_ALLOWED):
                 print('detect a attack ip', i)
-                self.BlOCKING_IP.add(i)
-        # for item in self.BlOCKING_IP:
-        #     print(self.BlOCKING_IP)
+                self.BlOCKING_IP.add(i)     # 黑名单喜加1
+
+                """ 注意！ 下面的方法默认注释，仅做试验用。如要启用，应与app.py中updateRules()函数一同启用"""
+                # self.blockTargetIP(targetIP=i,ruleName=("blocking:"+i))   # 添加屏蔽规则               
+                #out.write("blocking IP: " + i + ", blocking rule name: " +"blocking:"+ i)
+        #out.close()
 
     def getData(self, info):
         pattern = re.compile("\s+")     # 匹配多个空白字符
@@ -169,6 +193,37 @@ class DDosCheck():
         self.TOTOAL_FLOW += (counts_ipv4 +counts_ipv6)
 
         #print(counts_ipv4, counts_ipv6)
+    
+    def monitor(self, pkt):
+        # pkt is the return value of sniff
+        """
+        ###[ ARP ]###
+        hwtype    = 0x1
+        ptype     = IPv4
+        hwlen     = 6
+        plen      = 4
+        op        = who-has
+        hwsrc     = f4:83:cd:0f:14:b4
+        psrc      = 192.168.0.1
+        hwdst     = 00:00:00:00:00:00
+        pdst      = 192.168.0.103
+        """
+        # pkt.show()
+        macAddress = pkt['ARP'].hwsrc
+        IP = pkt['ARP'].psrc
+        if(macAddress in self.IP_Mac_address.keys()):
+            self.IP_Mac_address[macAddress].add(IP)
+        else:
+            self.IP_Mac_address[macAddress] = {IP,}
+
+    def ARPassistListening(self):
+        # prn设置回调函数，对每一条数据进行操作
+        # timeout，每次嗅探的时长
+        # filter 使用wireshark语法过滤包
+        # store = 1/0  缓存/不缓存 数据包
+        ptks = sniff(prn = self.monitor,filter = "arp",store=1,timeout=15)   
+        # ptks.show()
+
 
 
 

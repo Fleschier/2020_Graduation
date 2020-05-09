@@ -9,6 +9,7 @@ $(document).ready(function(){
     var ipv6_data = [0,0,0,0,0,0,0,0,0,0,0]
     drawChart(ipv4_data, ipv6_data) //默认先画一个空的图
     
+    var ARP_flg = ''    //定时循环任务
 
     $("#startListening_button").click(function(){
         ifcontinue = true
@@ -16,6 +17,7 @@ $(document).ready(function(){
         this.setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: hidden;")
         document.getElementById("stopListening_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: visible;")
         document.getElementById("background_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: visible;")
+        document.getElementById("ARP_open_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: visible;")
         openWS(blockIP, currentInfo, ws, ifcontinue,ipv4_data, ipv6_data)
         sendMessage("start", ws)
         //drawChart()
@@ -26,11 +28,38 @@ $(document).ready(function(){
         this.setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: hidden;")
         document.getElementById("startListening_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: visible;")
         document.getElementById("background_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: hidden;")
+        document.getElementById("ARP_open_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: hidden;")
+        document.getElementById("ARP_close_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: hidden;")
         openWS(blockIP, currentInfo, ws, ifcontinue,ipv4_data, ipv6_data)
         sendMessage("stop", ws)
+        if(ARP_flg != ''){
+            window.clearInterval(ARP_flg)   //删除定时循环执行
+        }     
+    })
+
+
+    $("#ARP_open_button").click(function(){
+        this.setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: hidden;")
+        document.getElementById("ARP_close_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: visible;")
+        document.getElementById("ARP_flg").innerHTML = "&nbsp;(ARP监听已开启)"
+        ARP_flg = window.setInterval(function(){  //定时循环执行
+            $.ajax({
+                type : 'POST',
+                url : '/arp',
+                data : {"data" : "start"},
+                success : function(e){console.log(e)},
+                error : function(e){console.log(e)}
+            })
+        }, 15000);
+    })
+    $("#ARP_close_button").click(function(){
+        this.setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: hidden;")
+        document.getElementById("ARP_open_button").setAttribute("style","margin-top:10px;margin-bottom: 10px;visibility: visible;")
+        document.getElementById("ARP_flg").innerHTML = ''
+        window.clearInterval(ARP_flg)   //删除定时循环执行
+        
     })
 })
-
 
 function drawChart(ipv4_data, ipv6_data){
     // chart图表
