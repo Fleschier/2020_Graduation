@@ -58,7 +58,7 @@ $(document).ready(function(){
     })
 
     $("#midman_button").click(function(){
-        alert("test")
+        //alert("test")
         var ws = new WebSocket("ws://127.0.0.1:8888/secure_check")
         openWS(messageContainer, ws)  
         sendMessage("midmancheck", ws)

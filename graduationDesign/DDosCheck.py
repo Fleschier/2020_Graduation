@@ -81,12 +81,22 @@ class DDosCheck():
         self.OUTDATE_TIME = 1000       # 屏蔽IP的时长
         self.CURRENT_INFO = {}   # 存储当前活动连接状态
         self.BlOCKING_IP = set() # 存储黑名单
-        self.CURRENT_FLOW = {"Ipv4":0,"Ipv6":0}  # 当前流量速度，分段/秒
-        self.TOTOAL_FLOW = 0     # 从开始监听时起累计接收的分段数
+        self.CURRENT_FLOW = {"Ipv4":0,"Ipv6":0}  # 当前流量速度，单位： 分段/秒
+        self.MAX_ALLOWED_FLOW = 10000     # 允许最大的瞬时流量速度       单位： 分段/秒
+        self.TOTOAL_FLOW = 0     # 从开始监听时起累计接收的流量 单位：KB
         self.rules = {}     # 存储已被屏蔽的IP和对应的屏蔽规则名称
 
     def setMaxConcurrency(self, max):
         self.CONCURRENCY_ALLOWED = max
+    
+    def setMaxFlow(self,max):
+        self.MAX_ALLOWED_FLOW = max
+
+    # 是否流量超了
+    def isOverFlow(self):
+        if(self.CURRENT_FLOW["Ipv4"] >= self.MAX_ALLOWED_FLOW | self.CURRENT_FLOW["Ipv6"] >= self.MAX_ALLOWED_FLOW):
+            return True
+        return False
 
     def clearInfo(self):
         self.CURRENT_INFO.clear()
@@ -149,18 +159,19 @@ class DDosCheck():
                 self.CURRENT_INFO[outsideIP]["counts"] += 1
 
         # 下面进行黑名单IP的相关处理
-        #out = open("log.txt", 'w')  # 先建立文件，准备下面的将黑名单写入日志文件
-        for i in self.CURRENT_INFO:
-            # print(i, type(i))
-            #print(self.CURRENT_INFO[i]["counts"])
-            if(self.CURRENT_INFO[i]["counts"] >= self.CONCURRENCY_ALLOWED):
-                print('detect a attack ip', i)
-                self.BlOCKING_IP.add(i)     # 黑名单喜加1
+        if(self.isOverFlow()):  # 首先看流量是否超过阈值，否则没必要进行检测
+            #out = open("log.txt", 'w')  # 先建立文件，准备下面的将黑名单写入日志文件
+            for i in self.CURRENT_INFO:
+                # print(i, type(i))
+                #print(self.CURRENT_INFO[i]["counts"])
+                if(self.CURRENT_INFO[i]["counts"] >= self.CONCURRENCY_ALLOWED):
+                    print('detect a attack ip', i)
+                    self.BlOCKING_IP.add(i)     # 黑名单喜加1
 
-                """ 注意！ 下面的方法默认注释，仅做试验用。如要启用，应与app.py中updateRules()函数一同启用"""
-                # self.blockTargetIP(targetIP=i,ruleName=("blocking:"+i))   # 添加屏蔽规则               
-                #out.write("blocking IP: " + i + ", blocking rule name: " +"blocking:"+ i)
-        #out.close()
+                    """ 注意！ 下面的方法默认注释，仅做试验用。如要启用，应与app.py中updateRules()函数一同启用"""
+                    # self.blockTargetIP(targetIP=i,ruleName=("blocking:"+i))   # 添加屏蔽规则               
+                    #out.write("blocking IP: " + i + ", blocking rule name: " +"blocking:"+ i)
+            #out.close()
 
     def getData(self, info):
         pattern = re.compile("\s+")     # 匹配多个空白字符
@@ -186,14 +197,18 @@ class DDosCheck():
         tmp1_v6 = self.getData(info1_v6)
         tmp2_v4 = self.getData(info2_v4)  # 第二次扫描记录数据包数目
         tmp2_v6 = self.getData(info2_v6)
-        counts_ipv4 = tmp2_v4 - tmp1_v4   # 两者相减得到ipv4接收的分段数目
-        self.CURRENT_FLOW["Ipv4"] = counts_ipv4
+        counts_ipv4 = tmp2_v4 - tmp1_v4   # 两者相减得到接收的分段数目
         counts_ipv6 = tmp2_v6 - tmp1_v6
+
+        self.CURRENT_FLOW["Ipv4"] = counts_ipv4
         self.CURRENT_FLOW["Ipv6"] = counts_ipv6
-        self.TOTOAL_FLOW += (counts_ipv4 +counts_ipv6)
+
+        self.TOTOAL_FLOW += (counts_ipv4 + counts_ipv6)
 
         #print(counts_ipv4, counts_ipv6)
-    
+
+# 以下为ARP辅助监测
+
     def monitor(self, pkt):
         # pkt is the return value of sniff
         """
@@ -213,6 +228,9 @@ class DDosCheck():
         IP = pkt['ARP'].psrc
         if(macAddress in self.IP_Mac_address.keys()):
             self.IP_Mac_address[macAddress].add(IP)
+            if(len(self.IP_Mac_address[macAddress]) >= 3):   # 如果一个Mac地址对应多个IP，则加入黑名单
+                for ip in self.IP_Mac_address[macAddress]:
+                    self.BlOCKING_IP.add(ip)
         else:
             self.IP_Mac_address[macAddress] = {IP,}
 
@@ -221,17 +239,16 @@ class DDosCheck():
         # timeout，每次嗅探的时长
         # filter 使用wireshark语法过滤包
         # store = 1/0  缓存/不缓存 数据包
-        ptks = sniff(prn = self.monitor,filter = "arp",store=1,timeout=15)   
+        ptks = sniff(prn = self.monitor,filter = "arp",store=1,timeout=5)   
         # ptks.show()
-
-
 
 
 def main():
     ddos = DDosCheck()
     # ddos.setMaxConcurrency(10)
     # ddos.connectCheck()
-    ddos.flowCheck()
+    # ddos.flowCheck()
+    ddos.ARPassistListening()
 
 if(__name__ == '__main__'):
     main()

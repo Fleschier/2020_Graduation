@@ -96,16 +96,18 @@ def tryConnect(profl, passwd):
         return False
 
 class FakeWifiCheck():
+    blacklist = set()
     def __init__(self):
-        self.info_list = []
-        self.blacklist = []
-        self.pp = {}
-        self.channel = ''
+        self.info_list = [] # 记录所有的信息
+        self.blacklist = set()  # 记录所有的黑名单SSID
+        self.pp = {}            # 记录所有的BSSID及其对应的所有SSID
+        # self.channel = ''
 
     def sniff_channel_hop(self):
         # for i in range(1, 14):
             # os.system("iwconfig " + self.iface + " channel " + str(i))
-        sniff(count=4, prn=self.air_scan)   # prn：为每个数据包定义一个回调函数
+        # sniff(count=4, prn=self.air_scan)   # prn：为每个数据包定义一个回调函数
+        sniff(count=10, prn=self.air_scan, timeout=15) 
 
 
     def air_scan(self, pkt):
@@ -143,13 +145,15 @@ class FakeWifiCheck():
         Detects KARMA Attack.
         """
         for v in self.pp.keys():
-            if (len(self.pp[v]) >= 2 and v not in self.blacklist):  # 
+            if (len(self.pp[v]) >= 2):  # 如果BSSID是伪造了多个IP
                 print ("KARMA Attack activity detected.", 'magenta')
                 print (" MAC Address : ", v)
                 print (" FakeAP count: ", len(self.pp[v]))
- 
-                self.blacklist.append(v)
-        time.sleep(3)
+
+            # 将该BSSID所有伪造的SSID列入黑名单
+            for item in pp[v]:      
+                self.blacklist.add(item)
+        # time.sleep(3)
 
 
     # def find_channel(self, clist, v):

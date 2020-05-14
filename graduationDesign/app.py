@@ -48,9 +48,11 @@ class searchWifiHandler(tornado.web.RequestHandler):
         # profiles = wifi.bies()   # 这有错误，这里的profiles赋值了一个临时变量，函数一结束就会被收回
         tmp = wifi.bies()   # 获取所有的wifi profile配置
         profiles.clear() # 清除缓存
+
         for tmp_profile in tmp:
             profiles.append(tmp_profile)
         wifis.clear() # 清除缓存
+        
         for item in profiles:
             signal = item.signal
             res = '中等'+ '(' + str(signal) + ')'
@@ -115,7 +117,7 @@ class compreInspectionHandler(tornado.websocket.WebSocketHandler):
             }))
             compreInspectionHandler.currentWifi = msg['wifiname']
             compreInspectionHandler.currentProfile = getProfile(compreInspectionHandler.currentWifi)
-            print("WiFi name: ", compreInspectionHandler.currentWifi)
+            #print("WiFi name: ", compreInspectionHandler.currentWifi)
         
         if(msg["type"] == "basecheck"): 
             # 如果有另一个检测正在进行，挂起
@@ -169,9 +171,9 @@ def baseSecureCheck(currentWifi, currentProfile, self):
     self.write_message(json.dumps({
         'message' : '当前检测的WiFi:&nbsp;' + currentWifi
     }))
-    currentProfile = getProfile(currentWifi)      # 获取名称对应的wifi的配置文件
+    # currentProfile = getProfile(currentWifi)      # 获取名称对应的wifi的配置文件
     self.write_message(json.dumps({
-        'message' : 'WiFi ssid:&nbsp;' + currentProfile.ssid
+        'message' : 'WiFi ssid:&nbsp;' + currentWifi
     }))
     self.write_message(json.dumps({
         'message' : 'WiFi Bssid:&nbsp;' + currentProfile.bssid
@@ -179,9 +181,15 @@ def baseSecureCheck(currentWifi, currentProfile, self):
     self.write_message(json.dumps({
         'message' : '认证算法:&nbsp;' + wifi.auth_algori[currentProfile.auth[0]][6:]
     }))
+    akmtype = wifi.akm_types[currentProfile.akm[0]][6:]
     self.write_message(json.dumps({
-        'message' : '密钥管理类型:&nbsp;' + wifi.akm_types[currentProfile.akm[0]][6:]
+        'message' : '密钥管理类型:&nbsp;' + akmtype
     }))
+    if(akmtype == 'AKM_TYPE_NONE'):
+        self.write_message(json.dumps({
+            'message' : '检测到当前Wi-Fi为开放Wi-Fi，请谨慎连接！'
+        }))
+
     # self.write_message(json.dumps({
     #     'message' : '密码类型:&nbsp;' + wifi.cipher_types[currentProfile.cipher][6:]
     # }))
@@ -210,11 +218,59 @@ def keyCheck(currentWifi, currentProfile, self):
         self.write_message(json.dumps({'message' : 'wifi存在安全隐患，密码强度过低！请及时更换密码'}))
 
 def fakeWifiCheck(currentWifi, currentProfile, self):
+    checkwifi = wifi.FakeWifiCheck()
+
     self.write_message(json.dumps({
         'message' : '进行WiFi真实性检测...'
     }))
-    self.write_message(json.dumps({'message' : '功能开发中，敬请期待！'}))
-    pass
+    self.write_message(json.dumps({'message' : '正在读取本地日志...'}))
+    try:
+        f = open("blackList.log")
+        lines = f.readlines()
+        flg = True
+        for items in lines:
+            if(currentWifi in items.keys()):
+                self.write("本地日志中检测到该wifi：", currentWifi,"为危险wifi，请勿连接！")
+                flg = False
+                break
+        if(flg):
+            self.write_message(json.dumps({
+                'message' : '日志文件检测完成，无匹配项，即将开始嗅探程序...'
+            }))
+    except:
+        self.write_message(json.dumps({
+            'message' : '未能读取日志文件，正在新建日志...'
+        }))
+
+    self.write_message(json.dumps({
+        'message' : '嗅探程序已启动，正在执行，请稍后...'
+    }))
+    self.write_message(json.dumps({
+        'message' : '正在抓包...'
+    }))
+    checkwifi.sniff_channel_hop()
+    self.write_message(json.dumps({
+        'message' : '抓包完成'
+    }))
+    self.write_message(json.dumps({
+        'message' : '正在分析...'
+    }))
+    checkwifi.pp_analysis()
+
+    for item in checkwifi.blacklist:
+        self.write_message(json.dumps({
+            'message' : '已嗅探到伪造wifi：' + item
+        }))
+        if(item == currentWifi):
+            self.write_message(json.dumps({
+                'message' : '当前检测wifi为伪造wifi！停止连接！'
+            }))
+            break
+    if(not checkwifi.blacklist):    # 黑名单为空
+        self.write_message(json.dumps({
+            'message' : '未侦测到危险。'
+        }))
+
 
 class listeningHandler(tornado.websocket.WebSocketHandler):
     ddos = DDosCheck.DDosCheck()
@@ -252,6 +308,7 @@ class listeningHandler(tornado.websocket.WebSocketHandler):
             # 更新IP连接信息           
             listeningHandler.ddos.connectCheck()  # 更新
             Info = listeningHandler.ddos.CURRENT_INFO
+
             blockIP = listeningHandler.ddos.BlOCKING_IP
             # 处理连接信息
             for item in Info:
@@ -276,6 +333,7 @@ class listeningHandler(tornado.websocket.WebSocketHandler):
                     #'message' :item +5*"&nbsp;" + str(listeningHandler.ddos.CURRENT_INFO[item]["counts"]),
                     'message': info_message
                 }))
+            
             # 处理被封锁的IP
             for item in blockIP:
                 self.write_message(json.dumps({
@@ -319,7 +377,7 @@ class ArpAssistHandler(tornado.web.RequestHandler):
 
     def post(self):
         msg = self.get_argument("data")
-        time.sleep(1)
+        # time.sleep(1)
         if(msg == "start"):
             print("ARP start")
             self.write("success start ARP")
